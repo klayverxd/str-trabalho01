@@ -8,7 +8,7 @@ static pthread_cond_t alarme = PTHREAD_COND_INITIALIZER;
 
 // variaveis compartilhadas
 static double s_temp = 0, s_nivel = 0;
-static double limite_atual = HUGE_VALF;
+static double limite_atual = HUGE_VAL;
 
 // insere valores nos sensores
 void put_sensor(double temp, double nivel) {
