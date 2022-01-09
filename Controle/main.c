@@ -17,18 +17,24 @@
 // MOSTRA OS DADOS PERIODICAMENTE
 void thread_mostra_status(void) {
   // dados dos sensores de temperatura e nível
-  double t, h;
+  double t, ta, ti, no, h;
 
   while (1) {
     t = get_sensor("t");
+    ta = get_sensor("ta");
+    ti = get_sensor("ti");
+    no = get_sensor("no");
     h = get_sensor("h");
 
     aloca_tela();
     // apresentação dos valores em tela
     system("tput reset");
     printf("=============================\n");
-    printf("(T) Temperatura => %.2lf\n", t);
-    printf("(H) Nivel => %.2lf\n", h);
+    printf("(T) Temperatura da agua => %.2lf\n", t);
+    printf("(Ta) Temp. ar ambiente => %.2lf\n", ta);
+    printf("(Ti) Temp. agua que entra no recipiente => %.2lf\n", ti);
+    printf("(No) Fluxo de saida => %.2lf\n", no);
+    printf("(H) Nivel de agua => %.2lf\n", h);
     printf("=============================\n");
     libera_tela();
 
@@ -48,8 +54,14 @@ void thread_le_sensor(void) {
     // espera até o início do proximo periodo
     clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &t, NULL);
 
-    // colocando os valores de temperatura e nível
-    put_sensor(msg_socket("st-0"), msg_socket("sh-0"));
+    // colocando os valores dos sensores (t, ta, ti, no, h)
+    put_sensor(
+      msg_socket("st-0"),
+      msg_socket("sta0"),
+      msg_socket("sti0"),
+      msg_socket("sno0"),
+      msg_socket("sh-0")
+    );
 
     // calcula o próximo periodo
     t.tv_nsec += periodo;

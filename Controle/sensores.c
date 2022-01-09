@@ -7,14 +7,17 @@ static pthread_mutex_t exclusao_mutua = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t alarme = PTHREAD_COND_INITIALIZER;
 
 // variaveis compartilhadas
-static double s_temp = 0, s_nivel = 0;
+static double s_temp = 0, s_nivel = 0, s_ta = 0, s_ti = 0, s_no = 0;
 static double limite_atual = HUGE_VAL;
 
 // insere valores nos sensores
-void put_sensor(double temp, double nivel) {
+void put_sensor(double temp, double ta, double ti, double no, double nivel) {
   pthread_mutex_lock(&exclusao_mutua);
 
   s_temp = temp;
+  s_ta = ta;
+  s_ti = ti;
+  s_no = no;
   s_nivel = nivel;
 
   if (s_temp >= limite_atual)
@@ -31,6 +34,12 @@ double get_sensor(char s[5]) {
 
   if (strncmp(s, "t", 1) == 0)
     aux = s_temp;
+  else if (strncmp(s, "ta", 1) == 0)
+    aux = s_ta;
+  else if (strncmp(s, "ti", 1) == 0)
+    aux = s_ti;
+  else if (strncmp(s, "no", 1) == 0)
+    aux = s_no;
   else if (strncmp(s, "h", 1) == 0)
     aux = s_nivel;
 
