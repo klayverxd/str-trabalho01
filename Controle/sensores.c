@@ -34,9 +34,9 @@ double get_sensor(char s[5]) {
 
   if (strncmp(s, "t", 1) == 0)
     aux = s_temp;
-  else if (strncmp(s, "ta", 1) == 0)
+  else if (strncmp(s, "a", 1) == 0)
     aux = s_ta;
-  else if (strncmp(s, "ti", 1) == 0)
+  else if (strncmp(s, "i", 1) == 0)
     aux = s_ti;
   else if (strncmp(s, "no", 1) == 0)
     aux = s_no;

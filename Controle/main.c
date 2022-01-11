@@ -21,8 +21,8 @@ void thread_mostra_status(void) {
 
   while (1) {
     t = get_sensor("t");
-    ta = get_sensor("ta");
-    ti = get_sensor("ti");
+    ta = get_sensor("a");
+    ti = get_sensor("i");
     no = get_sensor("no");
     h = get_sensor("h");
 
@@ -55,13 +55,7 @@ void thread_le_sensor(void) {
     clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &t, NULL);
 
     // colocando os valores dos sensores (t, ta, ti, no, h)
-    put_sensor(
-      msg_socket("st-0"),
-      msg_socket("sta0"),
-      msg_socket("sti0"),
-      msg_socket("sno0"),
-      msg_socket("sh-0")
-    );
+    put_sensor(msg_socket("st-0"), msg_socket("sta0"), msg_socket("sti0"), msg_socket("sno0"), msg_socket("sh-0"));
 
     // calcula o próximo periodo
     t.tv_nsec += periodo;
