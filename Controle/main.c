@@ -12,6 +12,7 @@
 #define NSEC_PER_SEC (1000000000)
 #define NUM_AMOSTRAS 1000
 #define LIMITE_ALARME_TEMP 30
+#define DIMINUI_NIVEL_RAPIDO 100.0
 
 double TEMP_REF = 0.0, NIVEL_REF = 0.0;
 
@@ -157,11 +158,10 @@ void thread_controle_temperatura(void) {
 
 void thread_controle_nivel(void) {
   char msg_enviada[1000];
-  double temp, ref_temp;
+  double nivel, ref_nivel;
 
-  struct timespec t, t_fim;
-  long periodo = 50e6;  // 50ms
-  long atraso_fim; // momento em que inicia até o fim
+  struct timespec t;
+  long periodo = 70e6;  // 70ms
 
   // leitura da hora atual
   clock_gettime(CLOCK_MONOTONIC, &t);
@@ -170,50 +170,31 @@ void thread_controle_nivel(void) {
     // espera até o início do proximo periodo
     clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &t, NULL);
 
-    temp = get_sensor("t");
-    ref_temp = get_ref_temp();
+    nivel = get_sensor("h");
+    ref_nivel = get_ref_nivel();
 
     // Ni -> quantidade de água que entra no sistema
     // Na -> quantidade de água aquecida que entra no sistema (80°C)
-    double ni, na;
+    double ni, na, nf;
 
-    if (temp > ref_temp) {
-      // abre todo o atuador Ni (entrada de agua natural)
-      sprintf(msg_enviada, "ani%lf", 100.0);
-      msg_socket(msg_enviada);
-
-      // abre todo o atuador Nf (valvula de liberacao)
-      sprintf(msg_enviada, "anf%lf", 100.0);
-      msg_socket(msg_enviada);
-
-      // fecha o atuador Na (entrada de agua aquecida)
-      sprintf(msg_enviada, "ana%lf", 0.0);
-      msg_socket(msg_enviada);
+    // <!-- nivel acima da referencia -->
+    if (nivel > ref_nivel) {
+      if ((ref_nivel - nivel) * 20 < 0.35) {
+        nf = (ref_nivel - nivel) * 20;
+      }
+      else {
+        nf = DIMINUI_NIVEL_RAPIDO;
+      }
     }
 
-    if (temp < ref_temp) {
-      // controle proporcional ao erro
-      if ((ref_temp - temp) * 20 > 10.0)
-        // Atuador (Na) no máximo
-        na = 10.0;
-      else
-        na = (ref_temp - temp) * 20;
-
-      // fecha o atuador Ni (entrada de agua natural)
-      sprintf(msg_enviada, "ani%lf", 0.0);
-      msg_socket(msg_enviada);
-
-      // Fica em 10 o atuador Nf (valvula de liberacao)
-      sprintf(msg_enviada, "anf%lf", 10.0);
-      msg_socket(msg_enviada);
-
-      // Atuador (Na) proporcional ao erro atual
-      sprintf(msg_enviada, "ana%lf", na);
-      msg_socket(msg_enviada);
+    // <!-- nivel abaixo da referencia -->
+    if (nivel < ref_nivel) {
+      // fecha atuador Nf (valvula de liberacao)
+      nf = 0.0;
     }
 
-    // leitura da hora atual
-    clock_gettime(CLOCK_MONOTONIC, &t_fim);
+    sprintf(msg_enviada, "anf%lf", nf);
+    msg_socket(msg_enviada);
 
     // calcula inicio do prox periodo
     t.tv_nsec += periodo;
@@ -271,6 +252,7 @@ int main(int argc, char* argv[]) {
   }
 
   put_ref_temp(TEMP_REF);
+  put_ref_nivel(NIVEL_REF);
 
   int porta_destino = atoi(argv[2]);
   // cria o canal de comunicação via rede

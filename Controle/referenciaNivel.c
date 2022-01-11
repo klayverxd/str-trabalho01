@@ -6,13 +6,13 @@ static double ref_entrada = 0;
 
 // ==== FUNÇÕES PÚBLICAS ====
 
-void put_ref_temp(double ref) {
+void put_ref_nivel(double ref) {
   pthread_mutex_lock(&exclusao_mutua);
   ref_entrada = ref;
   pthread_mutex_unlock(&exclusao_mutua);
 }
 
-double get_ref_temp() {
+double get_ref_nivel() {
   double aux;
 
   pthread_mutex_lock(&exclusao_mutua);
