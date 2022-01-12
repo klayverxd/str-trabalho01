@@ -12,7 +12,6 @@
 #define NSEC_PER_SEC (1000000000)
 #define NUM_AMOSTRAS 1000
 #define LIMITE_ALARME_TEMP 30
-#define DIMINUI_NIVEL_RAPIDO 100.0
 
 double TEMP_REF = 0.0, NIVEL_REF = 0.0;
 
@@ -84,7 +83,7 @@ void thread_alarme(void) {
 
 void thread_controle_temperatura(void) {
   char msg_enviada[1000];
-  double temp, ref_temp;
+  double temp, ref_temp, nivel, ref_nivel;
 
   struct timespec t, t_fim;
   long periodo = 50e6;  // 50ms
@@ -99,66 +98,103 @@ void thread_controle_temperatura(void) {
 
     temp = get_sensor("t");
     ref_temp = get_ref_temp();
+    nivel = get_sensor("h");
+    ref_nivel = get_ref_nivel();
 
     // Ni -> quantidade de água que entra no sistema
     // Na -> quantidade de água aquecida que entra no sistema (80°C)
-    double ni, na;
+    double nf, ni, na, q;
 
-    if (temp > ref_temp) {
-      // abre todo o atuador Ni (entrada de agua natural)
-      sprintf(msg_enviada, "ani%lf", 100.0);
-      msg_socket(msg_enviada);
-
-      // abre todo o atuador Nf (valvula de liberacao)
-      sprintf(msg_enviada, "anf%lf", 100.0);
-      msg_socket(msg_enviada);
-
-      // fecha o atuador Na (entrada de agua aquecida)
-      sprintf(msg_enviada, "ana%lf", 0.0);
-      msg_socket(msg_enviada);
-    }
-
-    if (temp < ref_temp) {
-      // controle proporcional ao erro
-      if ((ref_temp - temp) * 20 > 10.0)
-        // Atuador (Na) no máximo
+    // Temp baixa
+    if (temp < TEMP_REF) {
+      // Nivel baixo
+      if (nivel < NIVEL_REF) {
+        aloca_tela();
+        printf("### temp baixa - nivel baixo\n");
+        libera_tela();
+        nf = 0.0;
+        ni = 100.0;
         na = 10.0;
-      else
-        na = (ref_temp - temp) * 20;
+        q = 1000000.0;
+      }
 
-      // fecha o atuador Ni (entrada de agua natural)
-      sprintf(msg_enviada, "ani%lf", 0.0);
-      msg_socket(msg_enviada);
-
-      // Fica em 10 o atuador Nf (valvula de liberacao)
-      sprintf(msg_enviada, "anf%lf", 10.0);
-      msg_socket(msg_enviada);
-
-      // Atuador (Na) proporcional ao erro atual
-      sprintf(msg_enviada, "ana%lf", na);
-      msg_socket(msg_enviada);
+      // Nivel alto
+      if (nivel > NIVEL_REF) {
+        aloca_tela();
+        printf("### temp baixa - nivel alto\n");
+        libera_tela();
+        nf = 100.0;
+        ni = 0.0;
+        na = 10.0;
+        q = 1000000.0;
+      }
     }
 
-    // leitura da hora atual
-    clock_gettime(CLOCK_MONOTONIC, &t_fim);
+    // Temp alta
+    if (temp > TEMP_REF) {
+      // Nivel baixo
+      if (nivel < NIVEL_REF) {
+        aloca_tela();
+        printf("### temp alta - nivel baixo\n");
+        libera_tela();
+        nf = 0.0;
+        ni = 100.0;
+        na = 0.0;
+        q = 0.0;
+      }
 
-    // calcula o tempo de resposta observado
-    atraso_fim = 1000000 * (t_fim.tv_sec - t.tv_sec) + (t_fim.tv_nsec - t.tv_nsec) / 10000;
-
-    bufduplo_insere_leitura(atraso_fim);
-
-    // calcula inicio do prox periodo
-    t.tv_nsec += periodo;
-    while (t.tv_nsec >= NSEC_PER_SEC) {
-      t.tv_nsec -= NSEC_PER_SEC;
-      t.tv_sec++;
+      // Nivel alto
+      if (nivel > NIVEL_REF) {
+        aloca_tela();
+        printf("### temp alta - nivel alto refnivel%.2lf\n", NIVEL_REF);
+        libera_tela();
+        nf = 100.0;
+        ni = 0.0;
+        na = 0.0;
+        q = 0.0;
+      }
     }
+
+    // if (temp < TEMP_REF) {
+    //   // controle proporcional ao erro
+    //   if ((ref_temp - temp) * 20 > 10.0)
+    //     // Atuador (Na) no máximo
+    //     na = 10.0;
+    //   else
+    //     na = (ref_temp - temp) * 20;
+
+    sprintf(msg_enviada, "ani%lf", ni);
+    msg_socket(msg_enviada);
+
+    sprintf(msg_enviada, "anf%lf", nf);
+    msg_socket(msg_enviada);
+
+    sprintf(msg_enviada, "ana%lf", na);
+    msg_socket(msg_enviada);
+
+    sprintf(msg_enviada, "aq-%lf", q);
+    msg_socket(msg_enviada);
+  }
+
+  // leitura da hora atual
+  clock_gettime(CLOCK_MONOTONIC, &t_fim);
+
+  // calcula o tempo de resposta observado
+  atraso_fim = 1000000 * (t_fim.tv_sec - t.tv_sec) + (t_fim.tv_nsec - t.tv_nsec) / 10000;
+
+  bufduplo_insere_leitura(atraso_fim);
+
+  // calcula inicio do prox periodo
+  t.tv_nsec += periodo;
+  while (t.tv_nsec >= NSEC_PER_SEC) {
+    t.tv_nsec -= NSEC_PER_SEC;
+    t.tv_sec++;
   }
 }
 
 void thread_controle_nivel(void) {
   char msg_enviada[1000];
-  double nivel, ref_nivel;
+  double nivel, ref_nivel, temp, ref_temp;
 
   struct timespec t;
   long periodo = 70e6;  // 70ms
@@ -172,29 +208,91 @@ void thread_controle_nivel(void) {
 
     nivel = get_sensor("h");
     ref_nivel = get_ref_nivel();
+    temp = get_sensor("t");
+    ref_temp = get_ref_temp();
 
     // Ni -> quantidade de água que entra no sistema
     // Na -> quantidade de água aquecida que entra no sistema (80°C)
-    double ni, na, nf;
+    double ni, na, nf, q;
+
+    // nivel baixo
+    if (nivel < NIVEL_REF) {
+      // temp baixa
+      if (temp < TEMP_REF) {
+        aloca_tela();
+        printf("### nivel baixo - temp baixa\n");
+        libera_tela();
+        nf = 0.0;
+        ni = 100.0;
+        na = 10.0;
+        q = 1000000.0;
+      }
+
+      // temp alta
+      if (temp > TEMP_REF) {
+        aloca_tela();
+        printf("### nivel baixo - temp alta\n");
+        libera_tela();
+        nf = 0.0;
+        ni = 100.0;
+        na = 0.0;
+        q = 0.0;
+      }
+    }
+
+    // nivel alto
+    if (nivel > NIVEL_REF) {
+      // temp baixa
+      if (temp < TEMP_REF) {
+        aloca_tela();
+        printf("### nivel alto - temp baixa\n");
+        libera_tela();
+        nf = 100.0;
+        ni = 0.0;
+        na = 10.0;
+        q = 1000000.0;
+      }
+
+      // temp alta
+      if (temp > TEMP_REF) {
+        aloca_tela();
+        printf("### nivel alto - temp alta\n");
+        libera_tela();
+        nf = 100.0;
+        ni = 0.0;
+        na = 0.0;
+        q = 0.0;
+      }
+    }
 
     // <!-- nivel acima da referencia -->
-    if (nivel > ref_nivel) {
-      if ((ref_nivel - nivel) * 20 < 0.35) {
-        nf = (ref_nivel - nivel) * 20;
-      }
-      else {
-        nf = DIMINUI_NIVEL_RAPIDO;
-      }
-    }
+    // if (nivel > NIVEL_REF) {
+    //   if ((ref_nivel - nivel) * 20 < 0.35) {
+    //     nf = (ref_nivel - nivel) * 20;
+    //   }
+    //   else {
+    //     nf = DIMINUI_NIVEL_RAPIDO;
+    //   }
+    // }
 
-    // <!-- nivel abaixo da referencia -->
-    if (nivel < ref_nivel) {
-      // fecha atuador Nf (valvula de liberacao)
-      nf = 0.0;
-    }
+    // // <!-- nivel abaixo da referencia -->
+    // if (nivel < NIVEL_REF) {
+    //   // fecha atuador Nf (valvula de liberacao)
+    //   nf = 0.0;
+    // }
+
+    sprintf(msg_enviada, "ani%lf", ni);
+    msg_socket(msg_enviada);
 
     sprintf(msg_enviada, "anf%lf", nf);
     msg_socket(msg_enviada);
+
+    sprintf(msg_enviada, "ana%lf", na);
+    msg_socket(msg_enviada);
+
+    sprintf(msg_enviada, "aq-%lf", q);
+    msg_socket(msg_enviada);
+
 
     // calcula inicio do prox periodo
     t.tv_nsec += periodo;
