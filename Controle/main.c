@@ -13,6 +13,9 @@
 #define NUM_AMOSTRAS 1000
 #define LIMITE_ALARME_TEMP 30
 
+#define TRANS_TEMP 0.5
+#define TRANS_NIVEL 0.1
+
 double TEMP_REF = 0.0, NIVEL_REF = 0.0;
 
 // MOSTRA OS DADOS PERIODICAMENTE
@@ -105,9 +108,9 @@ void thread_controle_temperatura(void) {
     // Na -> quantidade de água aquecida que entra no sistema (80°C)
     double nf, ni, na, q;
 
-    // Temp baixa
+    // temp baixa
     if (temp < TEMP_REF) {
-      // Nivel baixo
+      // nivel baixo
       if (nivel < NIVEL_REF) {
         aloca_tela();
         printf("### temp baixa - nivel baixo\n");
@@ -118,7 +121,29 @@ void thread_controle_temperatura(void) {
         q = 1000000.0;
       }
 
-      // Nivel alto
+      // nivel medio baixo
+      if ((NIVEL_REF - nivel) < TRANS_NIVEL && (NIVEL_REF - nivel) > 0) {
+        aloca_tela();
+        printf("### temp baixa - nivel medio baixo\n");
+        libera_tela();
+        nf = 0.0;
+        ni = 0.0;
+        na = 10.0;
+        q = 10000.0;
+      }
+
+      // nivel medio alto
+      if ((NIVEL_REF - nivel) < TRANS_NIVEL && (NIVEL_REF - nivel) > 0) {
+        aloca_tela();
+        printf("### temp baixa - nivel medio alto\n");
+        libera_tela();
+        nf = 15.0;
+        ni = 0.0;
+        na = 10.0;
+        q = 10000.0;
+      }
+
+      // nivel alto
       if (nivel > NIVEL_REF) {
         aloca_tela();
         printf("### temp baixa - nivel alto\n");
@@ -130,9 +155,9 @@ void thread_controle_temperatura(void) {
       }
     }
 
-    // Temp alta
+    // temp alta
     if (temp > TEMP_REF) {
-      // Nivel baixo
+      // nivel baixo
       if (nivel < NIVEL_REF) {
         aloca_tela();
         printf("### temp alta - nivel baixo\n");
@@ -143,7 +168,7 @@ void thread_controle_temperatura(void) {
         q = 0.0;
       }
 
-      // Nivel alto
+      // nivel alto
       if (nivel > NIVEL_REF) {
         aloca_tela();
         printf("### temp alta - nivel alto refnivel%.2lf\n", NIVEL_REF);
