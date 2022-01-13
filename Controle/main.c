@@ -86,7 +86,7 @@ void thread_alarme(void) {
 
 void thread_controle_temperatura(void) {
   char msg_enviada[1000];
-  double temp, ref_temp, nivel, ref_nivel;
+  double temp, ref_temp, nivel, ref_nivel, no;
 
   struct timespec t, t_fim;
   long periodo = 50e6;  // 50ms
@@ -103,15 +103,16 @@ void thread_controle_temperatura(void) {
     ref_temp = get_ref_temp();
     nivel = get_sensor("h");
     ref_nivel = get_ref_nivel();
+    no = get_sensor("no");
 
     // Ni -> quantidade de água que entra no sistema
     // Na -> quantidade de água aquecida que entra no sistema (80°C)
     double nf, ni, na, q;
 
     // temp baixa
-    if (temp < TEMP_REF) {
+    if (temp < (TEMP_REF - TRANS_TEMP)) {
       // nivel baixo
-      if (nivel < NIVEL_REF) {
+      if (nivel < (NIVEL_REF - TRANS_NIVEL)) {
         aloca_tela();
         printf("### temp baixa - nivel baixo\n");
         libera_tela();
@@ -121,30 +122,42 @@ void thread_controle_temperatura(void) {
         q = 1000000.0;
       }
 
-      // nivel medio baixo
-      if ((NIVEL_REF - nivel) < TRANS_NIVEL && (NIVEL_REF - nivel) > 0) {
+      // nivel medio
+      if ((NIVEL_REF - nivel) < TRANS_NIVEL && (NIVEL_REF - nivel) > 0 ||
+        (nivel - NIVEL_REF) < TRANS_NIVEL && (nivel - NIVEL_REF) > 0) {
         aloca_tela();
-        printf("### temp baixa - nivel medio baixo\n");
+        printf("### temp baixa - nivel medio\n");
         libera_tela();
-        nf = 0.0;
+        nf = no + 10;
         ni = 0.0;
         na = 10.0;
-        q = 10000.0;
+        q = 1000000.0;
       }
+
+      // nivel medio baixo
+      // if ((NIVEL_REF - nivel) < TRANS_NIVEL && (NIVEL_REF - nivel) > 0) {
+      //   aloca_tela();
+      //   printf("### temp baixa - nivel medio baixo\n");
+      //   libera_tela();
+      //   nf = 0.0;
+      //   ni = 0.0;
+      //   na = 10.0;
+      //   q = 10000.0;
+      // }
 
       // nivel medio alto
-      if ((NIVEL_REF - nivel) < TRANS_NIVEL && (NIVEL_REF - nivel) > 0) {
-        aloca_tela();
-        printf("### temp baixa - nivel medio alto\n");
-        libera_tela();
-        nf = 15.0;
-        ni = 0.0;
-        na = 10.0;
-        q = 10000.0;
-      }
+      // if ((NIVEL_REF - nivel) < TRANS_NIVEL && (NIVEL_REF - nivel) > 0) {
+      //   aloca_tela();
+      //   printf("### temp baixa - nivel medio alto\n");
+      //   libera_tela();
+      //   nf = 15.0;
+      //   ni = 0.0;
+      //   na = 10.0;
+      //   q = 10000.0;
+      // }
 
       // nivel alto
-      if (nivel > NIVEL_REF) {
+      if (nivel > (NIVEL_REF + TRANS_NIVEL)) {
         aloca_tela();
         printf("### temp baixa - nivel alto\n");
         libera_tela();
@@ -155,10 +168,38 @@ void thread_controle_temperatura(void) {
       }
     }
 
-    // temp alta
-    if (temp > TEMP_REF) {
+    // temp media
+    if ((TEMP_REF - temp) < TRANS_TEMP && (TEMP_REF - temp) > 0 ||
+      (temp - TEMP_REF) < TRANS_TEMP && (temp - TEMP_REF) > 0) {
       // nivel baixo
-      if (nivel < NIVEL_REF) {
+      if (nivel < (NIVEL_REF - TRANS_NIVEL)) {
+        nf = 0.0;
+        ni = 100.0;
+        na = 0.0; //prop ao erro temp
+        q = 1000.0;
+      }
+
+      // nivel medio
+      if ((NIVEL_REF - nivel) < TRANS_NIVEL && (NIVEL_REF - nivel) > 0) {
+        nf = 0.0;
+        ni = 0.0;
+        na = 0.0; //prop ao erro temp
+        q = 1000.0;
+      }
+
+      // nivel alto
+      if (nivel > (NIVEL_REF + TRANS_NIVEL)) {
+        nf = 100.0;
+        ni = 0.0;
+        na = 0.0; //prop ao erro temp
+        q = 1000.0;
+      }
+    }
+
+    // temp alta
+    if (temp > (TEMP_REF + TRANS_TEMP)) {
+      // nivel baixo
+      if (nivel < (NIVEL_REF - TRANS_NIVEL)) {
         aloca_tela();
         printf("### temp alta - nivel baixo\n");
         libera_tela();
@@ -168,10 +209,22 @@ void thread_controle_temperatura(void) {
         q = 0.0;
       }
 
-      // nivel alto
-      if (nivel > NIVEL_REF) {
+      // nivel medio
+      if ((NIVEL_REF - nivel) < TRANS_NIVEL && (NIVEL_REF - nivel) > 0 ||
+        (nivel - NIVEL_REF) < TRANS_NIVEL && (nivel - NIVEL_REF) > 0) {
         aloca_tela();
-        printf("### temp alta - nivel alto refnivel%.2lf\n", NIVEL_REF);
+        printf("### temp alta - nivel medio\n");
+        libera_tela();
+        nf = 100.0;
+        ni = 100.0;
+        na = 0.0;
+        q = 0.0;
+      }
+
+      // nivel alto
+      if (nivel > (NIVEL_REF + TRANS_NIVEL)) {
+        aloca_tela();
+        printf("### temp alta - nivel alto");
         libera_tela();
         nf = 100.0;
         ni = 0.0;
@@ -219,7 +272,7 @@ void thread_controle_temperatura(void) {
 
 void thread_controle_nivel(void) {
   char msg_enviada[1000];
-  double nivel, ref_nivel, temp, ref_temp;
+  double nivel, ref_nivel, temp, ref_temp, no;
 
   struct timespec t;
   long periodo = 70e6;  // 70ms
@@ -235,17 +288,68 @@ void thread_controle_nivel(void) {
     ref_nivel = get_ref_nivel();
     temp = get_sensor("t");
     ref_temp = get_ref_temp();
+    no = get_sensor("no");
 
     // Ni -> quantidade de água que entra no sistema
     // Na -> quantidade de água aquecida que entra no sistema (80°C)
     double ni, na, nf, q;
 
-    // nivel baixo
-    if (nivel < NIVEL_REF) {
+    // nivel baixo OLD
+    // if (nivel < NIVEL_REF) {
       // temp baixa
-      if (temp < TEMP_REF) {
+    //   if (temp < TEMP_REF) {
+    //     aloca_tela();
+    //     printf("### nivel baixo - temp baixa\n");
+    //     libera_tela();
+    //     nf = 0.0;
+    //     ni = 100.0;
+    //     na = 10.0;
+    //     q = 1000000.0;
+    //   }
+
+    //   // temp alta
+    //   if (temp > TEMP_REF) {
+    //     aloca_tela();
+    //     printf("### nivel baixo - temp alta\n");
+    //     libera_tela();
+    //     nf = 0.0;
+    //     ni = 100.0;
+    //     na = 0.0;
+    //     q = 0.0;
+    //   }
+    // }
+
+    // nivel alto OLD
+    // if (nivel > NIVEL_REF) {
+    //   // temp baixa
+    //   if (temp < TEMP_REF) {
+    //     aloca_tela();
+    //     printf("### nivel alto - temp baixa\n");
+    //     libera_tela();
+    //     nf = 100.0;
+    //     ni = 0.0;
+    //     na = 10.0;
+    //     q = 1000000.0;
+    //   }
+
+    //   // temp alta
+    //   if (temp > TEMP_REF) {
+    //     aloca_tela();
+    //     printf("### nivel alto - temp alta\n");
+    //     libera_tela();
+    //     nf = 100.0;
+    //     ni = 0.0;
+    //     na = 0.0;
+    //     q = 0.0;
+    //   }
+    // }
+
+    // temp baixa
+    if (temp < (TEMP_REF - TRANS_TEMP)) {
+      // nivel baixo
+      if (nivel < (NIVEL_REF - TRANS_NIVEL)) {
         aloca_tela();
-        printf("### nivel baixo - temp baixa\n");
+        printf("### temp baixa - nivel baixo\n");
         libera_tela();
         nf = 0.0;
         ni = 100.0;
@@ -253,35 +357,109 @@ void thread_controle_nivel(void) {
         q = 1000000.0;
       }
 
-      // temp alta
-      if (temp > TEMP_REF) {
+      // nivel medio
+      if ((NIVEL_REF - nivel) < TRANS_NIVEL && (NIVEL_REF - nivel) > 0 ||
+        (nivel - NIVEL_REF) < TRANS_NIVEL && (nivel - NIVEL_REF) > 0) {
         aloca_tela();
-        printf("### nivel baixo - temp alta\n");
+        printf("### temp baixa - nivel medio\n");
         libera_tela();
-        nf = 0.0;
-        ni = 100.0;
-        na = 0.0;
-        q = 0.0;
+        nf = no + 10;
+        ni = 0.0;
+        na = 10.0;
+        q = 1000000.0;
       }
-    }
 
-    // nivel alto
-    if (nivel > NIVEL_REF) {
-      // temp baixa
-      if (temp < TEMP_REF) {
+      // nivel medio baixo
+      // if ((NIVEL_REF - nivel) < TRANS_NIVEL && (NIVEL_REF - nivel) > 0) {
+      //   aloca_tela();
+      //   printf("### temp baixa - nivel medio baixo\n");
+      //   libera_tela();
+      //   nf = 0.0;
+      //   ni = 0.0;
+      //   na = 10.0;
+      //   q = 10000.0;
+      // }
+
+      // nivel medio alto
+      // if ((NIVEL_REF - nivel) < TRANS_NIVEL && (NIVEL_REF - nivel) > 0) {
+      //   aloca_tela();
+      //   printf("### temp baixa - nivel medio alto\n");
+      //   libera_tela();
+      //   nf = 15.0;
+      //   ni = 0.0;
+      //   na = 10.0;
+      //   q = 10000.0;
+      // }
+
+      // nivel alto
+      if (nivel > (NIVEL_REF + TRANS_NIVEL)) {
         aloca_tela();
-        printf("### nivel alto - temp baixa\n");
+        printf("### temp baixa - nivel alto\n");
         libera_tela();
         nf = 100.0;
         ni = 0.0;
         na = 10.0;
         q = 1000000.0;
       }
+    }
 
-      // temp alta
-      if (temp > TEMP_REF) {
+    // temp media
+    if ((TEMP_REF - temp) < TRANS_TEMP && (TEMP_REF - temp) > 0 ||
+      (temp - TEMP_REF) < TRANS_TEMP && (temp - TEMP_REF) > 0) {
+      // nivel baixo
+      if (nivel < (NIVEL_REF - TRANS_NIVEL)) {
+        nf = 0.0;
+        ni = 100.0;
+        na = 0.0; //prop ao erro temp
+        q = 1000.0;
+      }
+
+      // nivel medio
+      if ((NIVEL_REF - nivel) < TRANS_NIVEL && (NIVEL_REF - nivel) > 0) {
+        nf = 0.0;
+        ni = 0.0;
+        na = 0.0; //prop ao erro temp
+        q = 1000.0;
+      }
+
+      // nivel alto
+      if (nivel > (NIVEL_REF + TRANS_NIVEL)) {
+        nf = 100.0;
+        ni = 0.0;
+        na = 0.0; //prop ao erro temp
+        q = 1000.0;
+      }
+    }
+
+    // temp alta
+    if (temp > (TEMP_REF + TRANS_TEMP)) {
+      // nivel baixo
+      if (nivel < (NIVEL_REF - TRANS_NIVEL)) {
         aloca_tela();
-        printf("### nivel alto - temp alta\n");
+        printf("### temp alta - nivel baixo\n");
+        libera_tela();
+        nf = 0.0;
+        ni = 100.0;
+        na = 0.0;
+        q = 0.0;
+      }
+
+      // nivel medio
+      if ((NIVEL_REF - nivel) < TRANS_NIVEL && (NIVEL_REF - nivel) > 0 ||
+        (nivel - NIVEL_REF) < TRANS_NIVEL && (nivel - NIVEL_REF) > 0) {
+        aloca_tela();
+        printf("### temp alta - nivel medio\n");
+        libera_tela();
+        nf = 100.0;
+        ni = 100.0;
+        na = 0.0;
+        q = 0.0;
+      }
+
+      // nivel alto
+      if (nivel > (NIVEL_REF + TRANS_NIVEL)) {
+        aloca_tela();
+        printf("### temp alta - nivel alto");
         libera_tela();
         nf = 100.0;
         ni = 0.0;

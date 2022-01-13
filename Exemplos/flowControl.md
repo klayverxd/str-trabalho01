@@ -66,7 +66,7 @@ temp baixa
     ni = 0.0;
     na = 10.0;
     q = 1000000.0;
-
+  
 temp media
   nivel baixo
     nf = 0.0;
@@ -91,7 +91,7 @@ temp alta
     na = 0.0;
     q = 0.0;
   nivel medio
-    nf = 0.0;
+    nf = 100.0;
     ni = 100.0;
     na = 0.0;
     q = 0.0;
