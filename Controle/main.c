@@ -105,8 +105,6 @@ void thread_controle_temperatura(void) {
     ref_nivel = get_ref_nivel();
     no = get_sensor("no");
 
-    // Ni -> quantidade de água que entra no sistema
-    // Na -> quantidade de água aquecida que entra no sistema (80°C)
     double nf, ni, na, q;
 
     // temp baixa
@@ -134,28 +132,6 @@ void thread_controle_temperatura(void) {
         q = 1000000.0;
       }
 
-      // nivel medio baixo
-      // if ((NIVEL_REF - nivel) < TRANS_NIVEL && (NIVEL_REF - nivel) > 0) {
-      //   aloca_tela();
-      //   printf("### temp baixa - nivel medio baixo\n");
-      //   libera_tela();
-      //   nf = 0.0;
-      //   ni = 0.0;
-      //   na = 10.0;
-      //   q = 10000.0;
-      // }
-
-      // nivel medio alto
-      // if ((NIVEL_REF - nivel) < TRANS_NIVEL && (NIVEL_REF - nivel) > 0) {
-      //   aloca_tela();
-      //   printf("### temp baixa - nivel medio alto\n");
-      //   libera_tela();
-      //   nf = 15.0;
-      //   ni = 0.0;
-      //   na = 10.0;
-      //   q = 10000.0;
-      // }
-
       // nivel alto
       if (nivel > (NIVEL_REF + TRANS_NIVEL)) {
         aloca_tela();
@@ -175,7 +151,7 @@ void thread_controle_temperatura(void) {
       if (nivel < (NIVEL_REF - TRANS_NIVEL)) {
         nf = 0.0;
         ni = 100.0;
-        na = 0.0; //prop ao erro temp
+        na = 0.0;
         q = 1000.0;
       }
 
@@ -183,7 +159,7 @@ void thread_controle_temperatura(void) {
       if ((NIVEL_REF - nivel) < TRANS_NIVEL && (NIVEL_REF - nivel) > 0) {
         nf = 0.0;
         ni = 0.0;
-        na = 0.0; //prop ao erro temp
+        na = 0.0;
         q = 1000.0;
       }
 
@@ -191,7 +167,7 @@ void thread_controle_temperatura(void) {
       if (nivel > (NIVEL_REF + TRANS_NIVEL)) {
         nf = 100.0;
         ni = 0.0;
-        na = 0.0; //prop ao erro temp
+        na = 0.0;
         q = 1000.0;
       }
     }
@@ -232,14 +208,6 @@ void thread_controle_temperatura(void) {
         q = 0.0;
       }
     }
-
-    // if (temp < TEMP_REF) {
-    //   // controle proporcional ao erro
-    //   if ((ref_temp - temp) * 20 > 10.0)
-    //     // Atuador (Na) no máximo
-    //     na = 10.0;
-    //   else
-    //     na = (ref_temp - temp) * 20;
 
     sprintf(msg_enviada, "ani%lf", ni);
     msg_socket(msg_enviada);
@@ -290,59 +258,7 @@ void thread_controle_nivel(void) {
     ref_temp = get_ref_temp();
     no = get_sensor("no");
 
-    // Ni -> quantidade de água que entra no sistema
-    // Na -> quantidade de água aquecida que entra no sistema (80°C)
     double ni, na, nf, q;
-
-    // nivel baixo OLD
-    // if (nivel < NIVEL_REF) {
-      // temp baixa
-    //   if (temp < TEMP_REF) {
-    //     aloca_tela();
-    //     printf("### nivel baixo - temp baixa\n");
-    //     libera_tela();
-    //     nf = 0.0;
-    //     ni = 100.0;
-    //     na = 10.0;
-    //     q = 1000000.0;
-    //   }
-
-    //   // temp alta
-    //   if (temp > TEMP_REF) {
-    //     aloca_tela();
-    //     printf("### nivel baixo - temp alta\n");
-    //     libera_tela();
-    //     nf = 0.0;
-    //     ni = 100.0;
-    //     na = 0.0;
-    //     q = 0.0;
-    //   }
-    // }
-
-    // nivel alto OLD
-    // if (nivel > NIVEL_REF) {
-    //   // temp baixa
-    //   if (temp < TEMP_REF) {
-    //     aloca_tela();
-    //     printf("### nivel alto - temp baixa\n");
-    //     libera_tela();
-    //     nf = 100.0;
-    //     ni = 0.0;
-    //     na = 10.0;
-    //     q = 1000000.0;
-    //   }
-
-    //   // temp alta
-    //   if (temp > TEMP_REF) {
-    //     aloca_tela();
-    //     printf("### nivel alto - temp alta\n");
-    //     libera_tela();
-    //     nf = 100.0;
-    //     ni = 0.0;
-    //     na = 0.0;
-    //     q = 0.0;
-    //   }
-    // }
 
     // temp baixa
     if (temp < (TEMP_REF - TRANS_TEMP)) {
@@ -369,28 +285,6 @@ void thread_controle_nivel(void) {
         q = 1000000.0;
       }
 
-      // nivel medio baixo
-      // if ((NIVEL_REF - nivel) < TRANS_NIVEL && (NIVEL_REF - nivel) > 0) {
-      //   aloca_tela();
-      //   printf("### temp baixa - nivel medio baixo\n");
-      //   libera_tela();
-      //   nf = 0.0;
-      //   ni = 0.0;
-      //   na = 10.0;
-      //   q = 10000.0;
-      // }
-
-      // nivel medio alto
-      // if ((NIVEL_REF - nivel) < TRANS_NIVEL && (NIVEL_REF - nivel) > 0) {
-      //   aloca_tela();
-      //   printf("### temp baixa - nivel medio alto\n");
-      //   libera_tela();
-      //   nf = 15.0;
-      //   ni = 0.0;
-      //   na = 10.0;
-      //   q = 10000.0;
-      // }
-
       // nivel alto
       if (nivel > (NIVEL_REF + TRANS_NIVEL)) {
         aloca_tela();
@@ -410,7 +304,7 @@ void thread_controle_nivel(void) {
       if (nivel < (NIVEL_REF - TRANS_NIVEL)) {
         nf = 0.0;
         ni = 100.0;
-        na = 0.0; //prop ao erro temp
+        na = 0.0;
         q = 1000.0;
       }
 
@@ -418,7 +312,7 @@ void thread_controle_nivel(void) {
       if ((NIVEL_REF - nivel) < TRANS_NIVEL && (NIVEL_REF - nivel) > 0) {
         nf = 0.0;
         ni = 0.0;
-        na = 0.0; //prop ao erro temp
+        na = 0.0;
         q = 1000.0;
       }
 
@@ -426,7 +320,7 @@ void thread_controle_nivel(void) {
       if (nivel > (NIVEL_REF + TRANS_NIVEL)) {
         nf = 100.0;
         ni = 0.0;
-        na = 0.0; //prop ao erro temp
+        na = 0.0;
         q = 1000.0;
       }
     }
@@ -468,22 +362,6 @@ void thread_controle_nivel(void) {
       }
     }
 
-    // <!-- nivel acima da referencia -->
-    // if (nivel > NIVEL_REF) {
-    //   if ((ref_nivel - nivel) * 20 < 0.35) {
-    //     nf = (ref_nivel - nivel) * 20;
-    //   }
-    //   else {
-    //     nf = DIMINUI_NIVEL_RAPIDO;
-    //   }
-    // }
-
-    // // <!-- nivel abaixo da referencia -->
-    // if (nivel < NIVEL_REF) {
-    //   // fecha atuador Nf (valvula de liberacao)
-    //   nf = 0.0;
-    // }
-
     sprintf(msg_enviada, "ani%lf", ni);
     msg_socket(msg_enviada);
 
@@ -495,7 +373,6 @@ void thread_controle_nivel(void) {
 
     sprintf(msg_enviada, "aq-%lf", q);
     msg_socket(msg_enviada);
-
 
     // calcula inicio do prox periodo
     t.tv_nsec += periodo;
