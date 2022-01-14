@@ -7,19 +7,23 @@
 #include "socket.h"
 #include "tela.h"
 #include "referenciaTemp.h"
+#include "referenciaNivel.h"
 #include "bufduplo.h"
 
 #define NSEC_PER_SEC (1000000000)
 #define NUM_AMOSTRAS 1000
 #define LIMITE_ALARME_TEMP 30
-#define DIMINUI_NIVEL_RAPIDO 100.0
 
-double TEMP_REF = 0.0, NIVEL_REF = 0.0;
+#define TRANS_TEMP 0.5
+#define TRANS_NIVEL 0.1
+
+double ref_temp = 0.0, NIVEL_REF = 0.0;
 
 // MOSTRA OS DADOS PERIODICAMENTE
 void thread_mostra_status(void) {
+  int unused __attribute__((unused));
   // dados dos sensores de temperatura e nível
-  double t, ta, ti, no, h;
+  double t, ta, ti, no, h, ref_temp, ref_nivel;
 
   while (1) {
     t = get_sensor("t");
@@ -27,12 +31,14 @@ void thread_mostra_status(void) {
     ti = get_sensor("i");
     no = get_sensor("no");
     h = get_sensor("h");
+    ref_temp = get_ref_temp();
+    ref_nivel = get_ref_nivel();
 
     aloca_tela();
     // apresentação dos valores em tela
-    system("tput reset");
-    printf("(T_R) Temperatura referencia => %.2lf\n", TEMP_REF);
-    printf("(H_R) Nivel referencia => %.2lf\n", NIVEL_REF);
+    unused = system("tput reset");
+    printf("(T_R) Temperatura referencia => %.2lf\n", ref_temp);
+    printf("(H_R) Nivel referencia => %.2lf\n", ref_nivel);
     printf("=======================================\n");
     printf("(T) Temperatura da agua => %.2lf\n", t);
     printf("(Ta) Temp. ar ambiente => %.2lf\n", ta);
@@ -48,7 +54,7 @@ void thread_mostra_status(void) {
 
 // LÊ OS DADOS PERIODICAMENTE
 void thread_le_sensor(void) {
-  struct timespec t, t_fim;
+  struct timespec t;
   long periodo = 10e6;
 
   // leitura da hora atual
@@ -84,7 +90,7 @@ void thread_alarme(void) {
 
 void thread_controle_temperatura(void) {
   char msg_enviada[1000];
-  double temp, ref_temp;
+  double temp, ref_temp, nivel, ref_nivel, no;
 
   struct timespec t, t_fim;
   long periodo = 50e6;  // 50ms
@@ -99,66 +105,129 @@ void thread_controle_temperatura(void) {
 
     temp = get_sensor("t");
     ref_temp = get_ref_temp();
+    nivel = get_sensor("h");
+    ref_nivel = get_ref_nivel();
+    no = get_sensor("no");
 
-    // Ni -> quantidade de água que entra no sistema
-    // Na -> quantidade de água aquecida que entra no sistema (80°C)
-    double ni, na;
+    double nf, ni, na, q;
 
-    if (temp > ref_temp) {
-      // abre todo o atuador Ni (entrada de agua natural)
-      sprintf(msg_enviada, "ani%lf", 100.0);
-      msg_socket(msg_enviada);
-
-      // abre todo o atuador Nf (valvula de liberacao)
-      sprintf(msg_enviada, "anf%lf", 100.0);
-      msg_socket(msg_enviada);
-
-      // fecha o atuador Na (entrada de agua aquecida)
-      sprintf(msg_enviada, "ana%lf", 0.0);
-      msg_socket(msg_enviada);
-    }
-
-    if (temp < ref_temp) {
-      // controle proporcional ao erro
-      if ((ref_temp - temp) * 20 > 10.0)
-        // Atuador (Na) no máximo
+    // temp baixa
+    if (temp < (ref_temp - TRANS_TEMP)) {
+      // nivel baixo
+      if (nivel < (ref_nivel - TRANS_NIVEL)) {
+        nf = 0.0;
+        ni = 100.0;
         na = 10.0;
-      else
-        na = (ref_temp - temp) * 20;
+        q = 1000000.0;
+      }
 
-      // fecha o atuador Ni (entrada de agua natural)
-      sprintf(msg_enviada, "ani%lf", 0.0);
-      msg_socket(msg_enviada);
+      // nivel medio
+      if (((ref_nivel - nivel) < TRANS_NIVEL && (ref_nivel - nivel) > 0) ||
+        ((nivel - ref_nivel) < TRANS_NIVEL && (nivel - ref_nivel) > 0)) {
+        nf = no + 10;
+        ni = 0.0;
+        na = 10.0;
+        q = 1000000.0;
+      }
 
-      // Fica em 10 o atuador Nf (valvula de liberacao)
-      sprintf(msg_enviada, "anf%lf", 10.0);
-      msg_socket(msg_enviada);
-
-      // Atuador (Na) proporcional ao erro atual
-      sprintf(msg_enviada, "ana%lf", na);
-      msg_socket(msg_enviada);
+      // nivel alto
+      if (nivel > (ref_nivel + TRANS_NIVEL)) {
+        nf = 100.0;
+        ni = 0.0;
+        na = 10.0;
+        q = 1000000.0;
+      }
     }
 
-    // leitura da hora atual
-    clock_gettime(CLOCK_MONOTONIC, &t_fim);
+    // temp media
+    if (((ref_temp - temp) < TRANS_TEMP && (ref_temp - temp) > 0) ||
+      ((temp - ref_temp) < TRANS_TEMP && (temp - ref_temp) > 0)) {
+      // nivel baixo
+      if (nivel < (ref_nivel - TRANS_NIVEL)) {
+        nf = 0.0;
+        ni = 100.0;
+        na = 0.0;
+        q = 1000.0;
+      }
 
-    // calcula o tempo de resposta observado
-    atraso_fim = 1000000 * (t_fim.tv_sec - t.tv_sec) + (t_fim.tv_nsec - t.tv_nsec) / 10000;
+      // nivel medio
+      if (((ref_nivel - nivel) < TRANS_NIVEL && (ref_nivel - nivel) > 0) ||
+        ((nivel - ref_nivel) < TRANS_NIVEL && (nivel - ref_nivel) > 0)) {
+        nf = 0.0;
+        ni = 0.0;
+        na = 0.0;
+        q = 1000.0;
+      }
 
-    bufduplo_insere_leitura(atraso_fim);
-
-    // calcula inicio do prox periodo
-    t.tv_nsec += periodo;
-    while (t.tv_nsec >= NSEC_PER_SEC) {
-      t.tv_nsec -= NSEC_PER_SEC;
-      t.tv_sec++;
+      // nivel alto
+      if (nivel > (ref_nivel + TRANS_NIVEL)) {
+        nf = 100.0;
+        ni = 0.0;
+        na = 0.0;
+        q = 1000.0;
+      }
     }
+
+    // temp alta
+    if (temp > (ref_temp + TRANS_TEMP)) {
+      // nivel baixo
+      if (nivel < (ref_nivel - TRANS_NIVEL)) {
+        nf = 0.0;
+        ni = 100.0;
+        na = 0.0;
+        q = 0.0;
+      }
+
+      // nivel medio
+      if (((ref_nivel - nivel) < TRANS_NIVEL && (ref_nivel - nivel) > 0) ||
+        ((nivel - ref_nivel) < TRANS_NIVEL && (nivel - ref_nivel) > 0)) {
+        nf = 100.0;
+        ni = 100.0;
+        na = 0.0;
+        q = 0.0;
+      }
+
+      // nivel alto
+      if (nivel > (ref_nivel + TRANS_NIVEL)) {
+        nf = 100.0;
+        ni = 0.0;
+        na = 0.0;
+        q = 0.0;
+      }
+    }
+
+    sprintf(msg_enviada, "ani%lf", ni);
+    msg_socket(msg_enviada);
+
+    sprintf(msg_enviada, "anf%lf", nf);
+    msg_socket(msg_enviada);
+
+    sprintf(msg_enviada, "ana%lf", na);
+    msg_socket(msg_enviada);
+
+    sprintf(msg_enviada, "aq-%lf", q);
+    msg_socket(msg_enviada);
+  }
+
+  // leitura da hora atual
+  clock_gettime(CLOCK_MONOTONIC, &t_fim);
+
+  // calcula o tempo de resposta observado
+  atraso_fim = 1000000 * (t_fim.tv_sec - t.tv_sec) + (t_fim.tv_nsec - t.tv_nsec) / 10000;
+
+  bufduplo_insere_leitura(atraso_fim);
+
+  // calcula inicio do prox periodo
+  t.tv_nsec += periodo;
+  while (t.tv_nsec >= NSEC_PER_SEC) {
+    t.tv_nsec -= NSEC_PER_SEC;
+    t.tv_sec++;
   }
 }
 
 void thread_controle_nivel(void) {
   char msg_enviada[1000];
-  double nivel, ref_nivel;
+  double nivel, ref_nivel, temp, ref_temp, no;
 
   struct timespec t;
   long periodo = 70e6;  // 70ms
@@ -172,28 +241,107 @@ void thread_controle_nivel(void) {
 
     nivel = get_sensor("h");
     ref_nivel = get_ref_nivel();
+    temp = get_sensor("t");
+    ref_temp = get_ref_temp();
+    no = get_sensor("no");
 
-    // Ni -> quantidade de água que entra no sistema
-    // Na -> quantidade de água aquecida que entra no sistema (80°C)
-    double ni, na, nf;
+    double ni, na, nf, q;
 
-    // <!-- nivel acima da referencia -->
-    if (nivel > ref_nivel) {
-      if ((ref_nivel - nivel) * 20 < 0.35) {
-        nf = (ref_nivel - nivel) * 20;
+    // nivel baixo
+    if (nivel < (ref_nivel - TRANS_NIVEL)) {
+      // temp baixa
+      if (temp < (ref_temp - TRANS_TEMP)) {
+        nf = 0.0;
+        ni = 100.0;
+        na = 10.0;
+        q = 1000000.0;
       }
-      else {
-        nf = DIMINUI_NIVEL_RAPIDO;
+
+      // temp media
+      if (((ref_temp - temp) < TRANS_TEMP && (ref_temp - temp) > 0) ||
+        ((temp - ref_temp) < TRANS_TEMP && (temp - ref_temp) > 0)) {
+        nf = 0.0;
+        ni = 100.0;
+        na = 0.0;
+        q = 1000.0;
+      }
+
+      // temp alta
+      if (temp > (ref_temp + TRANS_TEMP)) {
+        nf = 0.0;
+        ni = 100.0;
+        na = 0.0;
+        q = 0.0;
       }
     }
 
-    // <!-- nivel abaixo da referencia -->
-    if (nivel < ref_nivel) {
-      // fecha atuador Nf (valvula de liberacao)
-      nf = 0.0;
+    // nivel medio
+    if (((ref_nivel - nivel) < TRANS_NIVEL && (ref_nivel - nivel) > 0) ||
+      ((nivel - ref_nivel) < TRANS_NIVEL && (nivel - ref_nivel) > 0)) {
+      // temp baixa
+      if (temp < (ref_temp - TRANS_TEMP)) {
+        nf = no + 10;
+        ni = 0.0;
+        na = 10.0;
+        q = 1000000.0;
+      }
+
+      // temp media
+      if (((ref_temp - temp) < TRANS_TEMP && (ref_temp - temp) > 0) ||
+        ((temp - ref_temp) < TRANS_TEMP && (temp - ref_temp) > 0)) {
+        nf = 0.0;
+        ni = 0.0;
+        na = 0.0;
+        q = 1000.0;
+      }
+
+      // temp alta
+      if (temp > (ref_temp + TRANS_TEMP)) {
+        nf = 100.0;
+        ni = 100.0;
+        na = 0.0;
+        q = 0.0;
+      }
     }
+
+    // nivel alto
+    if (nivel > (ref_nivel + TRANS_NIVEL)) {
+      // temp baixa
+      if (temp < (ref_temp - TRANS_TEMP)) {
+        nf = 100.0;
+        ni = 0.0;
+        na = 10.0;
+        q = 1000000.0;
+      }
+
+      // temp media
+      if (((ref_temp - temp) < TRANS_TEMP && (ref_temp - temp) > 0) ||
+        ((temp - ref_temp) < TRANS_TEMP && (temp - ref_temp) > 0)) {
+        nf = 100.0;
+        ni = 0.0;
+        na = 0.0;
+        q = 1000.0;
+      }
+
+      // temp alta
+      if (temp > (ref_temp + TRANS_TEMP)) {
+        nf = 100.0;
+        ni = 0.0;
+        na = 0.0;
+        q = 0.0;
+      }
+    }
+
+    sprintf(msg_enviada, "ani%lf", ni);
+    msg_socket(msg_enviada);
 
     sprintf(msg_enviada, "anf%lf", nf);
+    msg_socket(msg_enviada);
+
+    sprintf(msg_enviada, "ana%lf", na);
+    msg_socket(msg_enviada);
+
+    sprintf(msg_enviada, "aq-%lf", q);
     msg_socket(msg_enviada);
 
     // calcula inicio do prox periodo
@@ -238,20 +386,25 @@ void thread_grava_temp_resp(void) {
 }
 
 int main(int argc, char* argv[]) {
-  system("tput reset");
-  while (TEMP_REF <= 0.0) {
+  // para ignorar o retorno das funções scanf e system requeridas pelo gcc
+  int unused __attribute__((unused));
+
+  unused = system("tput reset");
+
+  while (ref_temp <= 0.0) {
     printf("Digite um valor para a temperatura de referência maior que 0: ");
-    scanf("%lf", &TEMP_REF);
-    system("tput reset");
+    unused = scanf("%lf", &ref_temp);
+    unused = system("tput reset");
   }
 
   while (NIVEL_REF <= 0.0) {
     printf("Digite um valor para o nível de referência maior que 0: ");
-    scanf("%lf", &NIVEL_REF);
-    system("tput reset");
+    unused = scanf("%lf", &NIVEL_REF);
+    unused = system("tput reset");
   }
 
-  put_ref_temp(TEMP_REF);
+
+  put_ref_temp(ref_temp);
   put_ref_nivel(NIVEL_REF);
 
   int porta_destino = atoi(argv[2]);

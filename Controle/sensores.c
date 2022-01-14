@@ -28,7 +28,7 @@ void put_sensor(double temp, double ta, double ti, double no, double nivel) {
 
 // lê o sensor e retorna seu valor (de acordo com o argumento)
 double get_sensor(char s[5]) {
-  double aux;
+  double aux = 0;
 
   pthread_mutex_lock(&exclusao_mutua);
 
