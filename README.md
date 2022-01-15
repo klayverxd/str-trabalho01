@@ -27,3 +27,10 @@
 - Executar o código objeto do controlador com o script `./main xxx.yy.zz XXXX`, onde `xxx.yy.zz` é o IP local do WSL* e `XXXX` é o IP a porta em que está executando o simulador (se for a padrão é 4545).
 
 > *Para encontrar o IP do WSL basta digitar no terminal do Windows (PowerShell) `ipconfig` e usar o Endereço IPv4.*
+
+---
+
+## Lógica de controle
+<div align="center">
+  <img src="Controle/var_ref.png" alt="Variáveis referência" width="750px">
+</div>
