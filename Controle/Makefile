@@ -1,6 +1,6 @@
 CFLAGS = -g -Wall -O3 -o
 CLIBS = -lrt -lpthread
-MONITORES =  sensores.c socket.c tela.c referenciaTemp.c referenciaNivel.c bufduplo.c
+MONITORES =  sensores.c socket.c tela.c referenciaTemp.c referenciaNivel.c bufduplo.c bufduplo-nivel.c
 HOST = localhost
 PORT = 4545
 

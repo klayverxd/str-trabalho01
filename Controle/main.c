@@ -9,6 +9,7 @@
 #include "referenciaTemp.h"
 #include "referenciaNivel.h"
 #include "bufduplo.h"
+#include "bufduplo-nivel.h"
 
 #define NSEC_PER_SEC (1000000000)
 #define NUM_AMOSTRAS 1000
@@ -229,8 +230,9 @@ void thread_controle_nivel(void) {
   char msg_enviada[1000];
   double nivel, ref_nivel, temp, ref_temp, no;
 
-  struct timespec t;
+  struct timespec t, t_fim;
   long periodo = 70e6;  // 70ms
+  long atraso_fim; // momento em que inicia até o fim
 
   // leitura da hora atual
   clock_gettime(CLOCK_MONOTONIC, &t);
@@ -344,6 +346,14 @@ void thread_controle_nivel(void) {
     sprintf(msg_enviada, "aq-%lf", q);
     msg_socket(msg_enviada);
 
+    // leitura da hora atual
+    clock_gettime(CLOCK_MONOTONIC, &t_fim);
+
+    // calcula o tempo de resposta observado
+    atraso_fim = 1000000 * (t_fim.tv_sec - t.tv_sec) + (t_fim.tv_nsec - t.tv_nsec) / 10000;
+
+    bufduplo_insere_leitura_nivel(atraso_fim);
+
     // calcula inicio do prox periodo
     t.tv_nsec += periodo;
     while (t.tv_nsec >= NSEC_PER_SEC) {
@@ -378,7 +388,39 @@ void thread_grava_temp_resp(void) {
     fflush(dados_f);
 
     aloca_tela();
-    printf("Gravando arquivo...\n");
+    printf("Gravando arquivo temp...\n");
+    libera_tela();
+  }
+
+  fclose(dados_f);
+}
+
+void thread_grava_nivel_resp(void) {
+  FILE* dados_f;
+  dados_f = fopen("dados_nivel.txt", "w");
+
+  if (dados_f == NULL) {
+    printf("Erro, nao foi possivel abrir o arquivo\n");
+    exit(1);
+  }
+
+  int amostras = 1;
+  int TAM_BUFFER = get_tam_buffer_nivel(); //200
+
+  while (amostras++ <= NUM_AMOSTRAS / TAM_BUFFER) {
+    //Espera até o buffer encher para descarregar no arquivo
+    long* buf = bufduplo_espera_buffer_cheio_nivel();
+
+    int n2 = get_tam_buffer_nivel();
+    int tam = 0;
+
+    while (tam < n2)
+      fprintf(dados_f, "%4ld\n", buf[tam++]);
+
+    fflush(dados_f);
+
+    aloca_tela();
+    printf("Gravando arquivo nivel...\n");
     libera_tela();
   }
 
@@ -411,7 +453,7 @@ int main(int argc, char* argv[]) {
   // cria o canal de comunicação via rede
   cria_socket(argv[1], porta_destino);
 
-  pthread_t t1, t2, t3, t4, t5, t6;
+  pthread_t t1, t2, t3, t4, t5, t6, t7;
 
   pthread_create(&t1, NULL, (void*)thread_mostra_status, NULL);
   pthread_create(&t2, NULL, (void*)thread_le_sensor, NULL);
@@ -419,6 +461,7 @@ int main(int argc, char* argv[]) {
   pthread_create(&t4, NULL, (void*)thread_controle_temperatura, NULL);
   pthread_create(&t5, NULL, (void*)thread_controle_nivel, NULL);
   pthread_create(&t6, NULL, (void*)thread_grava_temp_resp, NULL);
+  pthread_create(&t7, NULL, (void*)thread_grava_nivel_resp, NULL);
 
   pthread_join(t1, NULL);
   pthread_join(t2, NULL);
