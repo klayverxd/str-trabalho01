@@ -17,7 +17,7 @@
 #define TRANS_TEMP 0.5
 #define TRANS_NIVEL 0.1
 
-double ref_temp = 0.0, NIVEL_REF = 0.0;
+double REF_TEMP = 0.0, NIVEL_REF = 0.0;
 
 // MOSTRA OS DADOS PERIODICAMENTE
 void thread_mostra_status(void) {
@@ -207,21 +207,21 @@ void thread_controle_temperatura(void) {
 
     sprintf(msg_enviada, "aq-%lf", q);
     msg_socket(msg_enviada);
-  }
 
-  // leitura da hora atual
-  clock_gettime(CLOCK_MONOTONIC, &t_fim);
+    // leitura da hora atual
+    clock_gettime(CLOCK_MONOTONIC, &t_fim);
 
-  // calcula o tempo de resposta observado
-  atraso_fim = 1000000 * (t_fim.tv_sec - t.tv_sec) + (t_fim.tv_nsec - t.tv_nsec) / 10000;
+    // calcula o tempo de resposta observado
+    atraso_fim = 1000000 * (t_fim.tv_sec - t.tv_sec) + (t_fim.tv_nsec - t.tv_nsec) / 10000;
 
-  bufduplo_insere_leitura(atraso_fim);
+    bufduplo_insere_leitura(atraso_fim);
 
-  // calcula inicio do prox periodo
-  t.tv_nsec += periodo;
-  while (t.tv_nsec >= NSEC_PER_SEC) {
-    t.tv_nsec -= NSEC_PER_SEC;
-    t.tv_sec++;
+    // calcula inicio do prox periodo
+    t.tv_nsec += periodo;
+    while (t.tv_nsec >= NSEC_PER_SEC) {
+      t.tv_nsec -= NSEC_PER_SEC;
+      t.tv_sec++;
+    }
   }
 }
 
@@ -391,9 +391,9 @@ int main(int argc, char* argv[]) {
 
   unused = system("tput reset");
 
-  while (ref_temp <= 0.0) {
+  while (REF_TEMP <= 0.0) {
     printf("Digite um valor para a temperatura de referência maior que 0: ");
-    unused = scanf("%lf", &ref_temp);
+    unused = scanf("%lf", &REF_TEMP);
     unused = system("tput reset");
   }
 
@@ -404,7 +404,7 @@ int main(int argc, char* argv[]) {
   }
 
 
-  put_ref_temp(ref_temp);
+  put_ref_temp(REF_TEMP);
   put_ref_nivel(NIVEL_REF);
 
   int porta_destino = atoi(argv[2]);
