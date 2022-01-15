@@ -12,13 +12,13 @@
 #include "bufduplo-nivel.h"
 
 #define NSEC_PER_SEC (1000000000)
-#define NUM_AMOSTRAS 1000
+#define NUM_AMOSTRAS 10000
 #define LIMITE_ALARME_TEMP 30
 
 #define TRANS_TEMP 0.5
 #define TRANS_NIVEL 0.1
 
-double ref_temp = 0.0, NIVEL_REF = 0.0;
+double REF_TEMP = 0.0, REF_NIVEL = 0.0;
 
 // MOSTRA OS DADOS PERIODICAMENTE
 void thread_mostra_status(void) {
@@ -396,10 +396,10 @@ void thread_grava_temp_resp(void) {
 }
 
 void thread_grava_nivel_resp(void) {
-  FILE* dados_f;
-  dados_f = fopen("dados_nivel.txt", "w");
+  FILE* dados_h;
+  dados_h = fopen("dados_nivel.txt", "w");
 
-  if (dados_f == NULL) {
+  if (dados_h == NULL) {
     printf("Erro, nao foi possivel abrir o arquivo\n");
     exit(1);
   }
@@ -409,22 +409,22 @@ void thread_grava_nivel_resp(void) {
 
   while (amostras++ <= NUM_AMOSTRAS / TAM_BUFFER) {
     //Espera até o buffer encher para descarregar no arquivo
-    long* buf = bufduplo_espera_buffer_cheio_nivel();
+    long* buf_h = bufduplo_espera_buffer_cheio_nivel();
 
     int n2 = get_tam_buffer_nivel();
     int tam = 0;
 
     while (tam < n2)
-      fprintf(dados_f, "%4ld\n", buf[tam++]);
+      fprintf(dados_h, "%4ld\n", buf_h[tam++]);
 
-    fflush(dados_f);
+    fflush(dados_h);
 
     aloca_tela();
     printf("Gravando arquivo nivel...\n");
     libera_tela();
   }
 
-  fclose(dados_f);
+  fclose(dados_h);
 }
 
 int main(int argc, char* argv[]) {
@@ -433,21 +433,21 @@ int main(int argc, char* argv[]) {
 
   unused = system("tput reset");
 
-  while (ref_temp <= 0.0) {
+  while (REF_TEMP <= 0.0) {
     printf("Digite um valor para a temperatura de referência maior que 0: ");
-    unused = scanf("%lf", &ref_temp);
+    unused = scanf("%lf", &REF_TEMP);
     unused = system("tput reset");
   }
 
-  while (NIVEL_REF <= 0.0) {
+  while (REF_NIVEL <= 0.0) {
     printf("Digite um valor para o nível de referência maior que 0: ");
-    unused = scanf("%lf", &NIVEL_REF);
+    unused = scanf("%lf", &REF_NIVEL);
     unused = system("tput reset");
   }
 
 
-  put_ref_temp(ref_temp);
-  put_ref_nivel(NIVEL_REF);
+  put_ref_temp(REF_TEMP);
+  put_ref_nivel(REF_NIVEL);
 
   int porta_destino = atoi(argv[2]);
   // cria o canal de comunicação via rede
