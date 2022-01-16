@@ -1,4 +1,6 @@
-# Trabalho 01 
+# Trabalho 01
+
+> 📽️ [Vídeo de explicação e execução](https://youtu.be/FqttpVWbCY0)
 
 ## 🐧 Execução em Linux/WSL 
 **1° passo:**
