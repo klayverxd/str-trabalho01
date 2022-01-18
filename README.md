@@ -32,7 +32,7 @@
 
 ---
 
-## Lógica de controle
+## 🕹️ Casos de controle
 <div align="center">
   <img src="Controle/var_ref.png" alt="Variáveis referência" width="750px">
 </div>
