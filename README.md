@@ -36,3 +36,14 @@
 <div align="center">
   <img src="Controle/var_ref.png" alt="Variáveis referência" width="750px">
 </div>
+
+----
+## 🔗 Branches
+
+- `main`</br>
+  Branch principal onde contém o código de controle e criação do arquivo `dados_sensores.txt` com os tempos de resposta do controle de temperatura.
+- `feature`
+  - `controle-nivel-temp-coments`</br>
+    Ramo da branch principal onde contém comentários auxiliares para a apresentação dos casos em tempo real, com apresentação em tela dos valores baixos, médios e altos da temperatura e nível.
+  - `guarda-nivel`</br>
+    Ramo da branch principal onde contém a geração do arquivo `dados_nivel.txt` com os tempos de resposta do controle de nível para o auxílio na criação de gráficos para a análise do mesmo.
