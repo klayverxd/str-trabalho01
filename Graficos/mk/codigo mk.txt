@@ -1,0 +1,25 @@
+%%Tem de Resposta de Referencia
+tem_resp_ref = 50; %ms Para o controle de temperatura.
+%tem_resp_ref = 11.606;
+tem_resp_ref_nivel = 70; %ms Para o controle de n�vel.
+%tem_resp_ref_nivel = 30.511; %ms Para o controle de n�vel.
+deadline_temp = zeros(length(t1),1); %Recebe a contagem dos deadlines perdidos em cada �dice do vetor isso em um intervalo de 20 em 20
+
+base = importdata('dados_sensores.txt');
+t1 = base(:,1); %(amostras de tempo controle de temperatura)
+
+%Uma tarefa cumpre "m" deadlines em qualquer janela de "k" ativa��es consecultivas
+%Temos m <= k, caso m = k todos os deadlines precisam ser cumpridos
+%Plotagem do gr�fico (m,k)-firme para k =20
+soma_temp = zeros(length(t1),1);
+for k_temp = 20:length(t1)
+   soma_temp(k_temp, 1) = sum(deadline_temp(k_temp-19:k_temp, 1)); %Soma os resultados de dos �ndices 1 - 20, 21 - 40, 41 - 60 e assim vai varrendo 20 elementos
+   
+end
+figure(9);
+plot(1:length(t1),soma_temp)
+title('Medição do deadline perdido: (m,20)-firme para a tarefa de controle de temperatura','fontweight','bold','fontsize',8)
+%axis([0 length(v) 0 1.1*max(v)])
+axis([0 length(t1) 0 4])
+xlabel('Casos de Teste','fontweight','bold','fontsize',10)
+ylabel('Deadline perdido a cada ativação','fontweight','bold','fontsize',10)

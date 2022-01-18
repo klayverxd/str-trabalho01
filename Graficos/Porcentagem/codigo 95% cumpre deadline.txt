@@ -1,0 +1,21 @@
+%Extrai dados de arquivo
+arquivo = fopen('dados_tempo_resp.txt');
+v = fscanf(arquivo,'%f');
+
+Ms = sort(v(:));                          
+Result = Ms(1:ceil(length(Ms)*0.95));%Usando 95% das amostras
+HWM = max(Result)%High Water Mark
+
+subplot(2,1,1)
+bar(Result)
+axis([0 length(Result) 0 1.2*max(Result)])
+xlabel('Casos de Teste','fontweight','bold','fontsize',10)
+ylabel('Tempo de Execu��o [ms]','fontweight','bold','fontsize',10)
+
+subplot(2,1,2)
+[h,x]=hist(Result,[min(Result):1:max(Result)]);
+bar(x,h);
+colormap lines
+axis([min(Result) 1.1*max(Result) 0 5*max(Result)])
+xlabel('Tempo de Execu��o [ms]','fontweight','bold','fontsize',10)
+ylabel('Frequ�ncia','fontweight','bold','fontsize',10)

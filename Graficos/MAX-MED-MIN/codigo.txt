@@ -1,0 +1,21 @@
+%Extrai dados de arquivo
+arquivo = fopen('dados_tempo_resp.txt');
+v = fscanf(arquivo,'%f');
+
+minimo_tempo_resposta = min(v) %%Tempo de resposta minimo
+media_tempo_resposta = mean(v) %Tempo de resposta m�dio
+HWM = max(v) %High Water Mark - Tempo de resposta maximo
+
+subplot(2,1,1)
+bar(v)
+axis([0 length(v) 0 1.1*max(v)])
+xlabel('Casos de Teste','fontweight','bold','fontsize',10)
+ylabel('Tempo de Execu��o [ms]','fontweight','bold','fontsize',10)
+
+subplot(2,1,2)
+[h,x]=hist(v,[min(v):0.01:max(v)]);
+bar(x,h);
+colormap lines
+axis([min(v) max(v) 0 1.1*max(h)])
+xlabel('Tempo de Execu��o [ms]','fontweight','bold','fontsize',10)
+ylabel('Frequ�ncia','fontweight','bold','fontsize',10)
